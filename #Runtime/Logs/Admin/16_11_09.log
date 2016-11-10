@@ -1,0 +1,47 @@
+[ 2016-11-09T22:38:28+08:00 ] 127.0.0.1 /admin.php?s=/Addons/index.html
+INFO: [ app_init ] --START--
+INFO: Run Behavior\BuildLiteBehavior [ RunTime:0.000024s ]
+SQL: SHOW COLUMNS FROM `one_hooks` [ RunTime:0.0090s ]
+SQL: SELECT `name`,`addons` FROM `one_hooks`  [ RunTime:0.0004s ]
+SQL: SHOW COLUMNS FROM `one_addons` [ RunTime:0.0055s ]
+SQL: SELECT `id`,`name` FROM `one_addons` WHERE `status` = 1 AND `name` IN ('ReturnTop')  [ RunTime:0.0004s ]
+SQL: SELECT `id`,`name` FROM `one_addons` WHERE `status` = 1 AND `name` IN ('Attachment')  [ RunTime:0.0003s ]
+SQL: SELECT `id`,`name` FROM `one_addons` WHERE `status` = 1 AND `name` IN ('Attachment','SocialComment')  [ RunTime:0.0003s ]
+SQL: SELECT `id`,`name` FROM `one_addons` WHERE `status` = 1 AND `name` IN ('Attachment')  [ RunTime:0.0003s ]
+SQL: SELECT `id`,`name` FROM `one_addons` WHERE `status` = 1 AND `name` IN ('Editor')  [ RunTime:0.0004s ]
+SQL: SELECT `id`,`name` FROM `one_addons` WHERE `status` = 1 AND `name` IN ('EditorForAdmin')  [ RunTime:0.0003s ]
+SQL: SELECT `id`,`name` FROM `one_addons` WHERE `status` = 1 AND `name` IN ('SiteStat','SystemInfo','DevTeam','Test')  [ RunTime:0.0004s ]
+SQL: SELECT `id`,`name` FROM `one_addons` WHERE `status` = 1 AND `name` IN ('Editor')  [ RunTime:0.0004s ]
+INFO: Run Common\Behavior\InitHookBehavior [ RunTime:0.033016s ]
+INFO: [ app_init ] --END-- [ RunTime:0.033840s ]
+INFO: [ app_begin ] --START--
+INFO: Run Behavior\ReadHtmlCacheBehavior [ RunTime:0.000715s ]
+INFO: [ app_begin ] --END-- [ RunTime:0.000813s ]
+SQL: SHOW COLUMNS FROM `one_addons` [ RunTime:0.0053s ]
+SQL: SELECT `title`,`name` FROM `one_addons` WHERE ( status=1 AND has_adminlist=1 )  [ RunTime:0.0004s ]
+SQL: SHOW COLUMNS FROM `one_config` [ RunTime:0.0057s ]
+SQL: SELECT `type`,`name`,`value` FROM `one_config` WHERE `status` = 1  [ RunTime:0.0005s ]
+
+[ 2016-11-09T22:38:32+08:00 ] 127.0.0.1 /admin.php?s=/Addons/config/id/9.html
+INFO: [ app_init ] --START--
+INFO: Run Behavior\BuildLiteBehavior [ RunTime:0.000017s ]
+INFO: Run Common\Behavior\InitHookBehavior [ RunTime:0.002212s ]
+INFO: [ app_init ] --END-- [ RunTime:0.002777s ]
+INFO: [ app_begin ] --START--
+INFO: Run Behavior\ReadHtmlCacheBehavior [ RunTime:0.000569s ]
+INFO: [ app_begin ] --END-- [ RunTime:0.000634s ]
+SQL: SHOW COLUMNS FROM `one_addons` [ RunTime:0.0082s ]
+SQL: SELECT `title`,`name` FROM `one_addons` WHERE ( status=1 AND has_adminlist=1 )  [ RunTime:0.0003s ]
+
+[ 2016-11-09T22:38:39+08:00 ] 127.0.0.1 /admin.php?s=/Addons/config/id/16.html
+INFO: [ app_init ] --START--
+INFO: Run Behavior\BuildLiteBehavior [ RunTime:0.000016s ]
+INFO: Run Common\Behavior\InitHookBehavior [ RunTime:0.002160s ]
+INFO: [ app_init ] --END-- [ RunTime:0.002720s ]
+INFO: [ app_begin ] --START--
+INFO: Run Behavior\ReadHtmlCacheBehavior [ RunTime:0.000643s ]
+INFO: [ app_begin ] --END-- [ RunTime:0.000718s ]
+SQL: SHOW COLUMNS FROM `one_addons` [ RunTime:0.0060s ]
+SQL: SELECT `title`,`name` FROM `one_addons` WHERE ( status=1 AND has_adminlist=1 )  [ RunTime:0.0004s ]
+ERR: 模板不存在:./Application/Admin/View/./Addons/Test/test.html
+
