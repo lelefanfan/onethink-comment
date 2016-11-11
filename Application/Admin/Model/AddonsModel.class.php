@@ -53,10 +53,12 @@ class AddonsModel extends Model {
 		$addons			=	array();
 		$where['name']	=	array('in',$dirs);
 		$list			=	$this->where($where)->field(true)->select();
+
 		foreach($list as $addon){
 			$addon['uninstall']		=	0;
 			$addons[$addon['name']]	=	$addon;
 		}
+
         foreach ($dirs as $value) {
             if(!isset($addons[$value])){
 				$class = get_addon_class($value);

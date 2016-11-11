@@ -137,12 +137,16 @@ str;
     public function build(){
         $data                   =   $_POST;
         $data['info']['name']   =   trim($data['info']['name']);
+        // 获取插件类文件源代码
         $addonFile              =   $this->preview(false);
+        // 插件存放的目录
         $addons_dir             =   ONETHINK_ADDON_PATH;
         //创建目录结构
         $files          =   array();
+        // 插件目录 + '/' + 插件标识名 + '/' 组成插件目录
         $addon_dir      =   "$addons_dir{$data['info']['name']}/";
         $files[]        =   $addon_dir;
+        // 插件文件名称
         $addon_name     =   "{$data['info']['name']}Addon.class.php";
         $files[]        =   "{$addon_dir}{$addon_name}";
         if($data['has_config'] == 1);//如果有配置文件
@@ -154,14 +158,17 @@ str;
             $files[]    =   "{$addon_dir}Model/";
             $files[]    =   "{$addon_dir}Model/{$data['info']['name']}Model.class.php";
         }
+        // 插件设置的自定义模版
         $custom_config  =   trim($data['custom_config']);
         if($custom_config)
             $data[]     =   "{$addon_dir}{$custom_config}";
 
+        // 插件后台列表
         $custom_adminlist = trim($data['custom_adminlist']);
         if($custom_adminlist)
             $data[]     =   "{$addon_dir}{$custom_adminlist}";
 
+        // 依次创建 $files 存在的目录及空文件
         create_dir_or_files($files);
 
         //写文件
