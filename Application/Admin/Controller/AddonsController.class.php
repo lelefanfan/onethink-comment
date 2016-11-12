@@ -250,6 +250,7 @@ str;
         $this->meta_title = '插件列表';
         $list       =   D('Addons')->getList();
         $request    =   (array)I('request.');
+        // 分页
         $total      =   $list? count($list) : 1 ;
         $listRows   =   C('LIST_ROWS') > 0 ? C('LIST_ROWS') : 10;
         $page       =   new \Think\Page($total, $listRows, $request);
@@ -481,15 +482,23 @@ str;
      * 安装插件
      */
     public function install(){
+        // 插件名称
         $addon_name     =   trim(I('addon_name'));
+        // 类文件，例如：Addons\Test\TestAddon
         $class          =   get_addon_class($addon_name);
+        // 检测目录中是否存在插件
         if(!class_exists($class))
             $this->error('插件不存在');
+        // 实例化插件
         $addons  =   new $class;
+        // 获取插件信息
         $info = $addons->info;
+        // 插件信息检测
         if(!$info || !$addons->checkInfo())//检测信息的正确性
             $this->error('插件信息缺失');
+        // 初始化一个session
         session('addons_install_error',null);
+        // 安装插件，可以在此方法中安装插件需要的数据库信息
         $install_flag   =   $addons->install();
         if(!$install_flag){
             $this->error('执行插件预安装操作失败'.session('addons_install_error'));
