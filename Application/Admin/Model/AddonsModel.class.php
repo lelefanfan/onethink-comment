@@ -44,12 +44,16 @@ class AddonsModel extends Model {
      */
     public function getList($addon_dir = ''){
         if(!$addon_dir)
-            $addon_dir = ONETHINK_ADDON_PATH;
+            $addon_dir = ONETHINK_ADDON_PATH; // 插件目录
+        // 获取插件文件名
         $dirs = array_map('basename',glob($addon_dir.'*', GLOB_ONLYDIR));
+        // 插件目录及文件检测
         if($dirs === FALSE || !file_exists($addon_dir)){
             $this->error = '插件目录不可读或者不存在';
             return FALSE;
         }
+
+        // 从数据库中获取插件
 		$addons			=	array();
 		$where['name']	=	array('in',$dirs);
 		$list			=	$this->where($where)->field(true)->select();
@@ -59,21 +63,30 @@ class AddonsModel extends Model {
 			$addons[$addon['name']]	=	$addon;
 		}
 
+
         foreach ($dirs as $value) {
+            // 如果插件在目录中存在但是在数据库中不存在
             if(!isset($addons[$value])){
+                // 获取目录中的插件类名称
 				$class = get_addon_class($value);
+                // 如果不存在将错误记录到日志
 				if(!class_exists($class)){ // 实例化插件失败忽略执行
 					\Think\Log::record('插件'.$value.'的入口文件不存在！');
 					continue;
 				}
+                // 实例化目录中的插件类
                 $obj    =   new $class;
+                // 获取目录中插件信息并注入到插件列表中
 				$addons[$value]	= $obj->info;
 				if($addons[$value]){
+                    // 将目录中的插件设置为未安装
 					$addons[$value]['uninstall'] = 1;
+                    // 删除为安装插件的状态信息
                     unset($addons[$value]['status']);
 				}
 			}
         }
+
         int_to_string($addons, array('status'=>array(-1=>'损坏', 0=>'禁用', 1=>'启用', null=>'未安装')));
         $addons = list_sort_by($addons,'uninstall','desc');
         return $addons;

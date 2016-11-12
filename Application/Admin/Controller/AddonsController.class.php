@@ -34,10 +34,14 @@ class AddonsController extends AdminController {
     }
 
     //预览
+    // $output为true代表打印，为false代表返回
     public function preview($output = true){
         $data                   =   $_POST;
+        // 状态
         $data['info']['status'] =   (int)$data['info']['status'];
+        // 代码拼接
         $extend                 =   array();
+        // 配置设置自定义模板
         $custom_config          =   trim($data['custom_config']);
         if($data['has_config'] && $custom_config){
             $custom_config = <<<str
@@ -48,6 +52,7 @@ str;
             $extend[] = $custom_config;
         }
 
+        // 后台列表
         $admin_list = trim($data['admin_list']);
         if($data['has_adminlist'] && $admin_list){
             $admin_list = <<<str
@@ -60,6 +65,7 @@ str;
            $extend[] = $admin_list;
         }
 
+        // 后台菜单自定义模板
         $custom_adminlist = trim($data['custom_adminlist']);
         if($data['has_adminlist'] && $custom_adminlist){
             $custom_adminlist = <<<str
@@ -69,8 +75,9 @@ str;
 str;
             $extend[] = $custom_adminlist;
         }
-
+        // 拼接代码（配置设置自定义模板、后台列表、后台菜单自定义模板）
         $extend = implode('', $extend);
+        // 拼接执行钩子
         $hook = '';
         foreach ($data['hook'] as $value) {
             $hook .= <<<str
@@ -82,6 +89,7 @@ str;
 str;
         }
 
+        // 完成最后拼接
         $tpl = <<<str
 <?php
 
