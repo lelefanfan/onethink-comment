@@ -41,7 +41,7 @@ class AddonsController extends AdminController {
         $data['info']['status'] =   (int)$data['info']['status'];
         // 代码拼接
         $extend                 =   array();
-        // 配置设置自定义模板
+        // 1.配置自定义模板
         $custom_config          =   trim($data['custom_config']);
         if($data['has_config'] && $custom_config){
             $custom_config = <<<str
@@ -52,7 +52,7 @@ str;
             $extend[] = $custom_config;
         }
 
-        // 后台列表
+        // 2.后台列表
         $admin_list = trim($data['admin_list']);
         if($data['has_adminlist'] && $admin_list){
             $admin_list = <<<str
@@ -65,7 +65,7 @@ str;
            $extend[] = $admin_list;
         }
 
-        // 后台菜单自定义模板
+        // 3.后台列表自定义模板
         $custom_adminlist = trim($data['custom_adminlist']);
         if($data['has_adminlist'] && $custom_adminlist){
             $custom_adminlist = <<<str
@@ -166,6 +166,7 @@ str;
             $files[]    =   "{$addon_dir}Model/";
             $files[]    =   "{$addon_dir}Model/{$data['info']['name']}Model.class.php";
         }
+
         // 插件设置的自定义模版
         $custom_config  =   trim($data['custom_config']);
         if($custom_config)
@@ -175,7 +176,7 @@ str;
         $custom_adminlist = trim($data['custom_adminlist']);
         if($custom_adminlist)
             $data[]     =   "{$addon_dir}{$custom_adminlist}";
-
+        // p($data);
         // 依次创建 $files 存在的目录及空文件
         create_dir_or_files($files);
 
@@ -249,6 +250,7 @@ str;
     public function index(){
         $this->meta_title = '插件列表';
         $list       =   D('Addons')->getList();
+        // p($list);
         $request    =   (array)I('request.');
         // 分页
         $total      =   $list? count($list) : 1 ;
@@ -270,16 +272,20 @@ str;
     public function adminList($name){
         // 记录当前列表页的cookie
         Cookie('__forward__',$_SERVER['REQUEST_URI']);
+        // 实例化插件类
         $this->assign('name', $name);
         $class = get_addon_class($name);
         if(!class_exists($class))
             $this->error('插件不存在');
         $addon = new $class();
+        // 注入插件类
         $this->assign('addon', $addon);
+        // 获得后台列表菜单相关信息
         $param = $addon->admin_list;
         if(!$param)
             $this->error('插件列表信息不正确');
         $this->meta_title = $addon->info['title'];
+        // 从数组中将变量导入到当前的符号表 
         extract($param);
         $this->assign('title', $addon->info['title']);
         $this->assign($param);
@@ -365,20 +371,26 @@ str;
      * 设置插件页面
      */
     public function config(){
+        // 查找需要配置的插件
         $id     =   (int)I('id');
         $addon  =   M('Addons')->find($id);
         if(!$addon)
             $this->error('插件未安装');
+        // 实例化需要配置的插件
         $addon_class = get_addon_class($addon['name']);
         if(!class_exists($addon_class))
             trace("插件{$addon['name']}无法实例化,",'ADDONS','ERR');
         $data  =   new $addon_class;
+        // 设置当前插件目录
         $addon['addon_path'] = $data->addon_path;
+        // 设置当前插件自定义模板
         $addon['custom_config'] = $data->custom_config;
         $this->meta_title   =   '设置插件-'.$data->info['title'];
+        // 为模版中的配置设置数据库的当前配置值
         $db_config = $addon['config'];
         $addon['config'] = include $data->config_file;
         if($db_config){
+            // 解密数据库中配置信息
             $db_config = json_decode($db_config, true);
             foreach ($addon['config'] as $key => $value) {
                 if($value['type'] != 'group'){
@@ -393,6 +405,7 @@ str;
             }
         }
         $this->assign('data',$addon);
+        // 如果存在自定义配置模板
         if($addon['custom_config'])
             $this->assign('custom_config', $this->fetch($addon['addon_path'].$addon['custom_config']));
         $this->display();
