@@ -113,7 +113,7 @@ class AuthGroupModel extends Model {
     }
 
     /**
-     * 返回用户拥有管理权限的扩展数据id列表
+     * 返回用户拥有管理权限的扩展数据id列表（返回用户拥有栏目权限的id）
      *
      * @param int     $uid  用户id
      * @param int     $type 扩展数据标识
@@ -134,6 +134,7 @@ class AuthGroupModel extends Model {
         if ( $uid == UID && !empty($result) ) {
             return $result;
         }
+        // 获取表前缀
         $prefix = C('DB_PREFIX');
         $result = M()
             ->table($prefix.self::AUTH_GROUP_ACCESS.' g')

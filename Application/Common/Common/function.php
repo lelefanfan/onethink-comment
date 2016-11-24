@@ -470,6 +470,7 @@ function get_category($id, $field = null){
 
     /* 读取缓存数据 */
     if(empty($list)){
+        // 从缓存中获取
         $list = S('sys_category_list');
     }
 

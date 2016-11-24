@@ -66,12 +66,13 @@ class ArticleController extends AdminController {
      * @author huajie <banhuajie@163.com>
      */
     protected function getMenu(){
-        //获取动态分类
-        $cate_auth  =   AuthGroupModel::getAuthCategories(UID); //获取当前用户所有的内容权限节点
+        // 根据uid获取当前用户可见的栏目id
+        $cate_auth  =   AuthGroupModel::getAuthCategories(UID); 
         $cate_auth  =   $cate_auth == null ? array() : $cate_auth;
+        // 获取所有分类
         $cate       =   M('Category')->where(array('status'=>1))->field('id,title,pid,allow_publish')->order('pid,sort')->select();
 
-        //没有权限的分类则不显示
+        //权限检测，删除没有权限的栏目
         if(!IS_ROOT){
             foreach ($cate as $key=>$value){
                 if(!in_array($value['id'], $cate_auth)){
@@ -80,9 +81,10 @@ class ArticleController extends AdminController {
             }
         }
 
-        $cate           =   list_to_tree($cate);    //生成分类树
+        //生成分类树
+        $cate           =   list_to_tree($cate);  
 
-        //获取分类id
+        //获取当前请求分类id
         $cate_id        =   I('param.cate_id');
         $this->cate_id  =   $cate_id;
 
@@ -100,6 +102,7 @@ class ArticleController extends AdminController {
             }else{
                 $value['current'] = false;
             }
+            // 如果存在子节点
             if(!empty($value['_child'])){
                 $is_child = false;
                 foreach ($value['_child'] as $ka=>&$va){
@@ -127,7 +130,9 @@ class ArticleController extends AdminController {
                 }
             }
         }
+        // 注入栏目
         $this->assign('nodes',      $cate);
+        // 注入栏目id
         $this->assign('cate_id',    $this->cate_id);
 
         //获取面包屑信息
@@ -156,12 +161,14 @@ class ArticleController extends AdminController {
         if($cate_id===null){
             $cate_id = $this->cate_id;
         }
+
         if(!empty($cate_id)){
             $pid = I('pid',0);
             // 获取列表绑定的模型
             if ($pid == 0) {
+                // 关联模型id
                 $models     =   get_category($cate_id, 'model');
-				// 获取分组定义
+				// 分组id
 				$groups		=	get_category($cate_id, 'groups');
 				if($groups){
 					$groups	=	parse_field_attr($groups);
@@ -178,7 +185,8 @@ class ArticleController extends AdminController {
                 $model = M('Model')->getById($model_id);
                 if (empty($model['list_grid'])) {
                     $model['list_grid'] = M('Model')->getFieldByName('document','list_grid');
-                }                
+                } 
+
             }
             $this->assign('model', explode(',', $models));
         }else{
@@ -186,18 +194,22 @@ class ArticleController extends AdminController {
             $model = M('Model')->getByName('document');
             $model_id   =   null;
             $cate_id    =   0;
+            // p($model);
             $this->assign('model', null);
         }
 
-        //解析列表规则
+        // 解析列表规则
         $fields =	array();
+        // 列表定义
         $grids  =	preg_split('/[;\r\n]+/s', trim($model['list_grid']));
+        // p($grids);
         foreach ($grids as &$value) {
             // 字段:标题:链接
             $val      = explode(':', $value);
             // 支持多个字段显示
             $field   = explode(',', $val[0]);
             $value    = array('field' => $field, 'title' => $val[1]);
+            // p($value);
             if(isset($val[2])){
                 // 链接信息
                 $value['href']  =   $val[2];
@@ -220,8 +232,10 @@ class ArticleController extends AdminController {
         $fields[] = 'pid';
         // 过滤重复字段信息
         $fields =   array_unique($fields);
+        // p($fields);
         // 列表查询
         $list   =   $this->getDocumentList($cate_id,$model_id,$position,$fields,$group_id);
+        // p($list);
         // 列表显示处理
         $list   =   $this->parseDocumentList($list,$model_id);
         
@@ -248,37 +262,46 @@ class ArticleController extends AdminController {
     protected function getDocumentList($cate_id=0,$model_id=null,$position=null,$field=true,$group_id=null){
         /* 查询条件初始化 */
         $map = array();
-        if(isset($_GET['title'])){
+        // 该条件一般用于搜索
+        if(isset($_GET['title'])){            
             $map['title']  = array('like', '%'.(string)I('title').'%');
         }
+        // 状态
         if(isset($_GET['status'])){
             $map['status'] = I('status');
             $status = $map['status'];
         }else{
             $status = null;
-            $map['status'] = array('in', '0,1,2');
+            $map['status'] = array('in', '0,1,2'); //-1-删除，0-禁用，1-正常，2-待审核，3-草稿
         }
+        // 起始时间（用于高级搜索）
         if ( isset($_GET['time-start']) ) {
             $map['update_time'][] = array('egt',strtotime(I('time-start')));
         }
+        // 结束时间（用于高级搜索）
         if ( isset($_GET['time-end']) ) {
             $map['update_time'][] = array('elt',24*60*60 + strtotime(I('time-end')));
         }
+        // 指定用户
         if ( isset($_GET['nickname']) ) {
             $map['uid'] = M('Member')->where(array('nickname'=>I('nickname')))->getField('uid');
         }
 
-        // 构建列表数据
+        // 构建列表数据（Document是文档模型基础表）
         $Document = M('Document');
+        // p($Document);
 
+        // 指定分类id
         if($cate_id){
             $map['category_id'] =   $cate_id;
         }
+        // 指定pid，如果存在pid，忽略分类id
         $map['pid']         =   I('pid',0);
         if($map['pid']){ // 子文档列表忽略分类
             unset($map['category_id']);
         }
-        $Document->alias('DOCUMENT');
+        $Document->alias('DOCUMENT'); // 这里到底是执行了哪里？利用断点调试
+        // 如果存在模型id
         if(!is_null($model_id)){
             $map['model_id']    =   $model_id;
             if(is_array($field) && array_diff($Document->getDbFields(),$field)){
