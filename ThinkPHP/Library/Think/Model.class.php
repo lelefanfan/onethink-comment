@@ -24,6 +24,8 @@ class Model {
 
     // 当前数据库操作对象
     protected $db               =   null;
+	// 数据库对象池
+	private   $_db				=	array();
     // 主键名称
     protected $pk               =   'id';
     // 主键是否自动增长
@@ -47,7 +49,7 @@ class Model {
     // 数据信息
     protected $data             =   array();
     // 查询表达式参数
-    protected $options          =   array();  // 模型字段列表
+    protected $options          =   array();
     protected $_validate        =   array();  // 自动验证定义
     protected $_auto            =   array();  // 自动完成定义
     protected $_map             =   array();  // 字段映射定义
@@ -87,6 +89,8 @@ class Model {
             $this->tablePrefix = $tablePrefix;
         }elseif(!isset($this->tablePrefix)){
             $this->tablePrefix = C('DB_PREFIX');
+        }
+
         // 数据库初始化操作
         // 获取数据库操作对象
         // 当前模型有独立的数据库连接信息
@@ -419,14 +423,14 @@ class Model {
             } elseif (is_array($pk)) {
                 // 增加复合主键支持
                 foreach ($pk as $field) {
-                    if(isset($data[$pk])) {
+                    if(isset($data[$field])) {
                         $where[$field]      =   $data[$field];
                     } else {
                            // 如果缺少复合主键数据则不执行
                         $this->error        =   L('_OPERATION_WRONG_');
                         return false;
                     }
-                    unset($data[$pk]);
+                    unset($data[$field]);
                 }
             }
             if(!isset($where)){
@@ -532,6 +536,7 @@ class Model {
      * @return mixed
      */
     public function select($options=array()) {
+        // 获取主键
         $pk   =  $this->getPk();
         if(is_string($options) || is_numeric($options)) {
             // 根据主键查询
@@ -559,10 +564,7 @@ class Model {
                 return false;
             }
         } elseif(false === $options){ // 用于子查询 不查询只返回SQL
-            $options            =  array();
-            // 分析表达式
-            $options            =  $this->_parseOptions($options);
-            return  '( '.$this->fetchSql(true)->select($options).' )';
+        	$options['fetch_sql'] = true;
         }
         // 分析表达式
         $options    =  $this->_parseOptions($options);
@@ -579,33 +581,32 @@ class Model {
         if(false === $resultSet) {
             return false;
         }
-        if(empty($resultSet)) { // 查询结果为空
-            return null;
-        }
-
-        if(is_string($resultSet)){
-            return $resultSet;
-        }
-
-        $resultSet  =   array_map(array($this,'_read_data'),$resultSet);
-        $this->_after_select($resultSet,$options);
-        if(isset($options['index'])){ // 对数据集进行索引
-            $index  =   explode(',',$options['index']);
-            foreach ($resultSet as $result){
-                $_key   =  $result[$index[0]];
-                if(isset($index[1]) && isset($result[$index[1]])){
-                    $cols[$_key] =  $result[$index[1]];
-                }else{
-                    $cols[$_key] =  $result;
-                }
+        if(!empty($resultSet)) { // 有查询结果
+            if(is_string($resultSet)){
+                return $resultSet;
             }
-            $resultSet  =   $cols;
+
+            $resultSet  =   array_map(array($this,'_read_data'),$resultSet);
+            $this->_after_select($resultSet,$options);
+            if(isset($options['index'])){ // 对数据集进行索引
+                $index  =   explode(',',$options['index']);
+                foreach ($resultSet as $result){
+                    $_key   =  $result[$index[0]];
+                    if(isset($index[1]) && isset($result[$index[1]])){
+                        $cols[$_key] =  $result[$index[1]];
+                    }else{
+                        $cols[$_key] =  $result;
+                    }
+                }
+                $resultSet  =   $cols;
+            }
         }
         if(isset($cache)){
             S($key,$resultSet,$cache);
         }
         return $resultSet;
     }
+
     // 查询成功后的回调方法
     protected function _after_select(&$resultSet,$options) {}
 
@@ -851,10 +852,14 @@ class Model {
      */
     public function setInc($field,$step=1,$lazyTime=0) {
         if($lazyTime>0) {// 延迟写入
-            $condition   =  $this->options['where'];
-            $guid =  md5($this->name.'_'.$field.'_'.serialize($condition));
-            $step = $this->lazyWrite($guid,$step,$lazyTime);
-            if(false === $step ) return true; // 等待下次写入
+            $condition 	=  	$this->options['where'];
+            $guid 		=  	md5($this->name.'_'.$field.'_'.serialize($condition));
+            $step 		= 	$this->lazyWrite($guid,$step,$lazyTime);
+            if(empty($step)) {
+            	return true; // 等待下次写入
+            }elseif($step < 0) {
+            	$step 	=	'-'.$step;
+            }
         }
         return $this->setField($field,array('exp',$field.'+'.$step));
     }
@@ -869,10 +874,14 @@ class Model {
      */
     public function setDec($field,$step=1,$lazyTime=0) {
         if($lazyTime>0) {// 延迟写入
-            $condition   =  $this->options['where'];
-            $guid =  md5($this->name.'_'.$field.'_'.serialize($condition));
-            $step = $this->lazyWrite($guid,$step,$lazyTime);
-            if(false === $step ) return true; // 等待下次写入
+            $condition  =  	$this->options['where'];
+            $guid 		=  	md5($this->name.'_'.$field.'_'.serialize($condition));
+            $step 		= 	$this->lazyWrite($guid,-$step,$lazyTime);
+            if(empty($step)) {
+            	return true; // 等待下次写入
+            }elseif($step > 0) {
+            	$step 	=	'-'.$step;
+            }
         }
         return $this->setField($field,array('exp',$field.'-'.$step));
     }
@@ -932,6 +941,9 @@ class Model {
             }
             $resultSet          =   $this->db->select($options);
             if(!empty($resultSet)) {
+		        if(is_string($resultSet)){
+		            return $resultSet;
+		        }            	
                 $_field         =   explode(',', $field);
                 $field          =   array_keys($resultSet[0]);
                 $key1           =   array_shift($field);
@@ -958,6 +970,9 @@ class Model {
             }
             $result = $this->db->select($options);
             if(!empty($result)) {
+		        if(is_string($result)){
+		            return $result;
+		        }            	
                 if(true !== $sepa && 1==$options['limit']) {
                     $data   =   reset($result[0]);
                     if(isset($cache)){
@@ -989,12 +1004,10 @@ class Model {
         if(empty($data)) {
             $data   =   I('post.');
         }elseif(is_object($data)){
-            // 返回由对象属性组成的关联数组 
             $data   =   get_object_vars($data);
         }
         // 验证数据
         if(empty($data) || !is_array($data)) {
-            // _DATA_TYPE_INVALID_:非法数据对象！
             $this->error = L('_DATA_TYPE_INVALID_');
             return false;
         }
@@ -1003,37 +1016,23 @@ class Model {
         $type = $type?:(!empty($data[$this->getPk()])?self::MODEL_UPDATE:self::MODEL_INSERT);
 
         // 检查字段映射
-        if(!empty($this->_map)) {
-            foreach ($this->_map as $key=>$val){
-                if(isset($data[$key])) {
-                    $data[$val] =   $data[$key];
-                    unset($data[$key]);
-                }
-            }
-        }
+		$data =	$this->parseFieldsMap($data,0);
 
         // 检测提交字段的合法性
         if(isset($this->options['field'])) { // $this->field('field1,field2...')->create()
-            // 获取字段列表
             $fields =   $this->options['field'];
-            // 删除模型中的字段列表
             unset($this->options['field']);
         }elseif($type == self::MODEL_INSERT && isset($this->insertFields)) {
-            // 允许插入字段
             $fields =   $this->insertFields;
         }elseif($type == self::MODEL_UPDATE && isset($this->updateFields)) {
-            // 允许更新字段
             $fields =   $this->updateFields;
         }
-
         if(isset($fields)) {
-            // 将字符串字段列表转为数组字段列表
             if(is_string($fields)) {
                 $fields =   explode(',',$fields);
             }
             // 判断令牌验证字段
             if(C('TOKEN_ON'))   $fields[] = C('TOKEN_NAME', null, '__hash__');
-            // 循环 $data 数组中变量，删除 $fields 列表以外的所有字段
             foreach ($data as $key=>$val){
                 if(!in_array($key,$fields)) {
                     unset($data[$key]);
@@ -1046,7 +1045,7 @@ class Model {
 
         // 表单令牌验证
         if(!$this->autoCheckToken($data)) {
-            $this->error = L('_TOKEN_ERROR_'); // _TOKEN_ERROR_：表单令牌错误
+            $this->error = L('_TOKEN_ERROR_');
             return false;
         }
 
@@ -1083,7 +1082,7 @@ class Model {
 
             // 令牌验证
             list($key,$value)  =  explode('_',$data[$name]);
-            if($value && $_SESSION[$name][$key] === $value) { // 防止重复提交
+            if(isset($_SESSION[$name][$key]) && $value && $_SESSION[$name][$key] === $value) { // 防止重复提交
                 unset($_SESSION[$name][$key]); // 验证完成销毁session
                 return true;
             }
@@ -1127,6 +1126,10 @@ class Model {
      * @return mixed
      */
     private function autoOperation(&$data,$type) {
+    	if(false === $this->options['auto']){
+    		// 关闭自动完成
+    		return $data;
+    	}
         if(!empty($this->options['auto'])) {
             $_auto   =   $this->options['auto'];
             unset($this->options['auto']);
@@ -1180,6 +1183,10 @@ class Model {
      * @return boolean
      */
     protected function autoValidation($data,$type) {
+    	if(false === $this->options['validate'] ){
+    		// 关闭自动验证
+    		return true;
+    	}
         if(!empty($this->options['validate'])) {
             $_validate   =   $this->options['validate'];
             unset($this->options['validate']);
@@ -1195,7 +1202,7 @@ class Model {
                 // 验证因子定义格式
                 // array(field,rule,message,condition,type,when,params)
                 // 判断是否需要执行验证
-                if(empty($val[5]) || $val[5]== self::MODEL_BOTH || $val[5]== $type ) {
+                if(empty($val[5]) || ( $val[5]== self::MODEL_BOTH && $type < 3 ) || $val[5]== $type ) {
                     if(0==strpos($val[2],'{%') && strpos($val[2],'}'))
                         // 支持提示信息的多语言 使用 {%语言定义} 方式
                         $val[2]  =  L(substr($val[2],2,-1));
@@ -1350,6 +1357,17 @@ class Model {
     }
 
     /**
+     * 存储过程返回多数据集
+     * @access public
+     * @param string $sql  SQL指令
+     * @param mixed $parse  是否需要解析SQL
+     * @return array
+     */
+    public function procedure($sql, $parse = false) {
+        return $this->db->procedure($sql, $parse);
+    }
+
+    /**
      * SQL查询
      * @access public
      * @param string $sql  SQL指令
@@ -1399,7 +1417,7 @@ class Model {
         }else{
             $sql    =   strtr($sql,array('__TABLE__'=>$this->getTableName(),'__PREFIX__'=>$this->tablePrefix));
             $prefix =   $this->tablePrefix;
-            $sql    =   preg_replace_callback("/__([A-Z_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $sql);
+            $sql    =   preg_replace_callback("/__([A-Z0-9_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $sql);
         }
         $this->db->setModel($this->name);
         return $sql;
@@ -1418,21 +1436,20 @@ class Model {
             return $this->db;
         }
 
-        static $_db = array();
-        if(!isset($_db[$linkNum]) || $force ) {
+        if(!isset($this->_db[$linkNum]) || $force ) {
             // 创建一个新的实例
             if(!empty($config) && is_string($config) && false === strpos($config,'/')) { // 支持读取配置参数
                 $config  =  C($config);
             }
-            $_db[$linkNum]            =    Db::getInstance($config);
+            $this->_db[$linkNum]            =    Db::getInstance($config);
         }elseif(NULL === $config){
-            $_db[$linkNum]->close(); // 关闭数据库连接
-            unset($_db[$linkNum]);
+            $this->_db[$linkNum]->close(); // 关闭数据库连接
+            unset($this->_db[$linkNum]);
             return ;
         }
 
         // 切换数据库连接
-        $this->db   =    $_db[$linkNum];
+        $this->db   =    $this->_db[$linkNum];
         $this->_after_db();
         // 字段检测
         if(!empty($this->name) && $this->autoCheckFields)    $this->_checkTableInfo();
@@ -1565,6 +1582,10 @@ class Model {
                 $table  =   key($this->options['table']);
             }else{
                 $table  =   $this->options['table'];
+                if(strpos($table,')')){
+                    // 子查询
+                    return false;
+                }
             }
             $fields     =   $this->db->getFields($table);
             return  $fields ? array_keys($fields) : false;
@@ -1610,7 +1631,7 @@ class Model {
             $this->options['table'] =   $table;
         }elseif(!empty($table)) {
             //将__TABLE_NAME__替换成带前缀的表名
-            $table  = preg_replace_callback("/__([A-Z_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $table);
+            $table  = preg_replace_callback("/__([A-Z0-9_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $table);
             $this->options['table'] =   $table;
         }
         return $this;
@@ -1628,7 +1649,7 @@ class Model {
             $this->options['using'] =   $using;
         }elseif(!empty($using)) {
             //将__TABLE_NAME__替换成带前缀的表名
-            $using  = preg_replace_callback("/__([A-Z_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $using);
+            $using  = preg_replace_callback("/__([A-Z0-9_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $using);
             $this->options['using'] =   $using;
         }
         return $this;
@@ -1645,13 +1666,13 @@ class Model {
         $prefix =   $this->tablePrefix;
         if(is_array($join)) {
             foreach ($join as $key=>&$_join){
-                $_join  =   preg_replace_callback("/__([A-Z_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $_join);
+                $_join  =   preg_replace_callback("/__([A-Z0-9_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $_join);
                 $_join  =   false !== stripos($_join,'JOIN')? $_join : $type.' JOIN ' .$_join;
             }
             $this->options['join']      =   $join;
         }elseif(!empty($join)) {
             //将__TABLE_NAME__字符串替换成带前缀的表名
-            $join  = preg_replace_callback("/__([A-Z_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $join);
+            $join  = preg_replace_callback("/__([A-Z0-9_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $join);
             $this->options['join'][]    =   false !== stripos($join,'JOIN')? $join : $type.' JOIN '.$join;
         }
         return $this;
@@ -1676,7 +1697,7 @@ class Model {
         if(is_string($union) ) {
             $prefix =   $this->tablePrefix;
             //将__TABLE_NAME__字符串替换成带前缀的表名
-            $options  = preg_replace_callback("/__([A-Z_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $union);
+            $options  = preg_replace_callback("/__([A-Z0-9_-]+)__/sU", function($match) use($prefix){ return $prefix.strtolower($match[1]);}, $union);
         }elseif(is_array($union)){
             if(isset($union[0])) {
                 $this->options['union']  =  array_merge($this->options['union'],$union);
@@ -1700,6 +1721,11 @@ class Model {
      * @return Model
      */
     public function cache($key=true,$expire=null,$type=''){
+        // 增加快捷调用方式 cache(10) 等同于 cache(true, 10)
+        if(is_numeric($key) && is_null($expire)){
+            $expire = $key;
+            $key    = true;
+        }
         if(false !== $key)
             $this->options['cache']  =  array('key'=>$key,'expire'=>$expire,'type'=>$type);
         return $this;
@@ -1841,7 +1867,7 @@ class Model {
      * @param boolean $fetch 是否返回sql
      * @return Model
      */
-    public function fetchSql($fetch){
+    public function fetchSql($fetch=true){
         $this->options['fetch_sql'] =   $fetch;
         return $this;
     }

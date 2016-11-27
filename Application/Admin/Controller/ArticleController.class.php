@@ -132,11 +132,13 @@ class ArticleController extends AdminController {
         }
         // 注入栏目
         $this->assign('nodes',      $cate);
+        // p($cate);
         // 注入栏目id
         $this->assign('cate_id',    $this->cate_id);
 
         //获取面包屑信息
         $nav = get_parent_category($cate_id);
+        // p($nav);
         $this->assign('rightNav',   $nav);
 
         //获取回收站权限
@@ -155,9 +157,9 @@ class ArticleController extends AdminController {
      * @param integer $group_id 分组id
      */
     public function index($cate_id = null, $model_id = null, $position = null,$group_id=null){
-        //获取左边菜单
+        // 获取左边菜单
         $this->getMenu();
-
+        // 设置栏目id
         if($cate_id===null){
             $cate_id = $this->cate_id;
         }
@@ -192,6 +194,7 @@ class ArticleController extends AdminController {
         }else{
             // 获取基础模型信息
             $model = M('Model')->getByName('document');
+            // p($model);
             $model_id   =   null;
             $cate_id    =   0;
             // p($model);
@@ -200,9 +203,9 @@ class ArticleController extends AdminController {
 
         // 解析列表规则
         $fields =	array();
-        // 列表定义
+        // 文档列表表头定义
         $grids  =	preg_split('/[;\r\n]+/s', trim($model['list_grid']));
-        // p($grids);
+        // 文档列表头设置
         foreach ($grids as &$value) {
             // 字段:标题:链接
             $val      = explode(':', $value);
@@ -214,6 +217,7 @@ class ArticleController extends AdminController {
                 // 链接信息
                 $value['href']  =   $val[2];
                 // 搜索链接信息中的字段信息
+                // 注意这里有一个新语法，php闭包用法，以后学习。
                 preg_replace_callback('/\[([a-z_]+)\]/', function($match) use(&$fields){$fields[]=$match[1];}, $value['href']);
             }
             if(strpos($val[1],'|')){
@@ -300,7 +304,9 @@ class ArticleController extends AdminController {
         if($map['pid']){ // 子文档列表忽略分类
             unset($map['category_id']);
         }
-        $Document->alias('DOCUMENT'); // 这里到底是执行了哪里？利用断点调试
+        $Document->alias('DOCUMENT'); //设置数据表的别名
+        // echo $Document->getLastSql();die;
+        
         // 如果存在模型id
         if(!is_null($model_id)){
             $map['model_id']    =   $model_id;

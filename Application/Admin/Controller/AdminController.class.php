@@ -21,6 +21,7 @@ class AdminController extends Controller {
      */
     
     protected function _initialize(){
+
         // 获取当前用户ID
         if(defined('UID')) return ;
         define('UID',is_login()); //is_login() 已登录，返回用户id        
@@ -392,15 +393,20 @@ class AdminController extends Controller {
      */
     protected function lists ($model,$where=array(),$order='',$field=true){
         $options    =   array();
+        // 请求参数
         $REQUEST    =   (array)I('request.');
+        // 实例化模型
         if(is_string($model)){
             $model  =   M($model);
         }
 
+        // 反射，通过反射获取 model.class.php 模型类中 $options 的值
         $OPT        =   new \ReflectionProperty($model,'options');
+        // p($options);
         $OPT->setAccessible(true);
-
+        // 获取模型主键
         $pk         =   $model->getPk();
+        // 设置数据排序方式，可以参考该函数的说明（上面）
         if($order===null){
             //order置空
         }else if ( isset($REQUEST['_order']) && isset($REQUEST['_field']) && in_array(strtolower($REQUEST['_order']),array('desc','asc')) ) {
@@ -410,26 +416,35 @@ class AdminController extends Controller {
         }elseif($order){
             $options['order'] = $order;
         }
+        // 注销请求变量
         unset($REQUEST['_order'],$REQUEST['_field']);
 
+        // 设置查询条件
         if(empty($where)){
-            $where  =   array('status'=>array('egt',0));
+            $where  =   array('status'=>array('egt',0)); // egt 表示 大于等于0
         }
         if( !empty($where)){
             $options['where']   =   $where;
         }
+        // 合并查询表达式
         $options      =   array_merge( (array)$OPT->getValue($model), $options );
+        // 获取查询总条数
         $total        =   $model->where($options['where'])->count();
 
+        // 设置每页条数
         if( isset($REQUEST['r']) ){
             $listRows = (int)$REQUEST['r'];
         }else{
             $listRows = C('LIST_ROWS') > 0 ? C('LIST_ROWS') : 10;
         }
+
+        // 实例化分页类
         $page = new \Think\Page($total, $listRows, $REQUEST);
+        // 设置分页样式
         if($total>$listRows){
             $page->setConfig('theme','%FIRST% %UP_PAGE% %LINK_PAGE% %DOWN_PAGE% %END% %HEADER%');
         }
+        // 获取分页模板
         $p =$page->show();
         $this->assign('_page', $p? $p: '');
         $this->assign('_total',$total);

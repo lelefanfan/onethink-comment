@@ -182,8 +182,10 @@ class App {
     static public function run() {
         // 应用初始化标签
         Hook::listen('app_init');
+
         App::init();
         // 应用开始标签
+        
         Hook::listen('app_begin');
         // Session初始化
         if(!IS_CLI){
@@ -191,6 +193,7 @@ class App {
         }
         // 记录应用初始化时间
         G('initTime');
+
         App::exec();
         // 应用结束标签
         Hook::listen('app_end');

@@ -24,5 +24,6 @@ class IndexController extends AdminController {
         $this->meta_title = '管理首页';
         $this->display();
     }
+    
 
 }

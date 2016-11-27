@@ -34,9 +34,9 @@ class ConfigController extends AdminController {
         // 记录当前列表页的cookie
         Cookie('__forward__',$_SERVER['REQUEST_URI']);
 
-        $this->assign('group',C('CONFIG_GROUP_LIST'));
-        $this->assign('group_id',I('get.group',0));
-        $this->assign('list', $list);
+        $this->assign('group',C('CONFIG_GROUP_LIST')); // 全部分组名
+        $this->assign('group_id',I('get.group',0)); // 分组id
+        $this->assign('list', $list); // 列表信息
         $this->meta_title = '配置管理';
         $this->display();
     }
@@ -105,6 +105,7 @@ class ConfigController extends AdminController {
      * @author 麦当苗儿 <zuojiazi@vip.qq.com>
      */
     public function save($config){
+        // p($config);
         if($config && is_array($config)){
             $Config = M('Config');
             foreach ($config as $name => $value) {
@@ -112,6 +113,7 @@ class ConfigController extends AdminController {
                 $Config->where($map)->setField('value', $value);
             }
         }
+        // 清空配置缓存
         S('DB_CONFIG_DATA',null);
         $this->success('保存成功！');
     }
@@ -140,13 +142,19 @@ class ConfigController extends AdminController {
 
     // 获取某个标签的配置参数
     public function group() {
+        // 分组ID
         $id     =   I('get.id',1);
+        // 配置分组
         $type   =   C('CONFIG_GROUP_LIST');
+        // 根据分组ID获取当前组配置信息
         $list   =   M("Config")->where(array('status'=>1,'group'=>$id))->field('id,name,title,extra,value,remark,type')->order('sort')->select();
+        // 将当前分组配置信息注入到模板中
         if($list) {
             $this->assign('list',$list);
         }
+        // 注入分组ID
         $this->assign('id',$id);
+        // 设置模板标题
         $this->meta_title = $type[$id].'设置';
         $this->display();
     }

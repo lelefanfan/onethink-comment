@@ -71,8 +71,9 @@
 $(function(){
 	//搜索功能
 	$("#search").click(function(){
-		var url = $(this).attr('url');
-        var query  = $('.search-form').find('input').serialize();
+		var url = $(this).attr('url');// 获取要提交的url
+        var query  = $('.search-form').find('input').serialize(); // 获取搜索表单关键字
+        // 这里的正则是怎么替换的？？？
         query = query.replace(/(&|^)(\w*?\d*?\-*?_*?)*?=?((?=&)|(?=$))/g,'');
         query = query.replace(/^&/g,'');
         if( url.indexOf('?')>0 ){
@@ -91,7 +92,9 @@ $(function(){
 	});
 	//点击排序
 	$('.list_sort').click(function(){
+		// 下一步要打开的url
 		var url = $(this).attr('url');
+		// 要进行排序的id
 		var ids = $('.ids:checked');
 		var param = '';
 		if(ids.length > 0){
